@@ -50,7 +50,7 @@ _deps = [
     "einops>=0.8.0",
     "flake8>=6.0.0",
     "hf_transfer>=0.1.4",
-    "huggingface-hub[cli]>=0.19.2,<1.0",
+    "huggingface-hub[cli]>=0.19.2",
     "isort>=5.12.0",
     "liger_kernel==0.5.2",
     "lighteval[math] @ git+https://github.com/huggingface/lighteval.git@4f381b352c0e467b5870a97d41cb66b487a2c503",
