@@ -35,15 +35,17 @@ bash nscc/setup_env.sh
 
 Creates the conda env at `/scratch/$USER/envs/medvlm-r1` — not under `$HOME`, which is too small for a PyTorch + flash-attn stack.
 
-## 3. Dataset — hold here before downloading
+## 3. Dataset — confirmed blocker, not yet resolved
 
-The repo's own README says to download `FreedomIntelligence/PubMedVision` (~59.5GB). But the actual training code (`grpo.py`, for `DATASET=Huatuo`) loads sample *metadata* from a **different** dataset, `FreedomIntelligence/Medical_Multimodal_Evaluation_Data` (test split, filtered to the MR/CT/X-Ray subsets, 500 samples each), and for each sample resolves the image file as:
+The repo's own README says to download `FreedomIntelligence/PubMedVision` (~59.5GB). **This does not satisfy what the training code actually needs — confirmed, not just suspected:**
 
-```python
-image_path = os.path.join(base_image_path, example["image"][0])
-```
+- `grpo.py` (for `DATASET=Huatuo`) loads row metadata from a **different** dataset, `FreedomIntelligence/Medical_Multimodal_Evaluation_Data` (test split, filtered to the MR/CT/X-Ray subsets, 500 samples each), and resolves each image at `os.path.join(base_image_path, example["image"][0])`.
+- Sampled rows carry `image` filenames like `images/ankle071718.png` and a `dataset` field naming the row's *original* source benchmark (e.g. `OmniMedVQA`, `PMC-VQA_test`) — this dataset is an aggregation over pre-existing medical VQA benchmarks, not something derived from PubMedVision.
+- PubMedVision's own files are named `pmc_<n>_<i>.jpg` — different convention, different extension, no overlap with the filenames above.
 
-`base_image_path` is `--dataset_name` — a local directory you populate, not a HF dataset id. Whether PubMedVision's extracted files land at paths matching `example["image"][0]` is still being verified. **Don't bulk-download 59.5GB until this is confirmed** — the exact steps will be added here once it is.
+So the real images need to come from each row's original source benchmark, not PubMedVision. No documentation anywhere (HF dataset cards, the HuatuoGPT-Vision repo, MedVLM-R1's README/issues) reconciles this — looks like an undocumented gap in the upstream repo's reproducibility instructions, not something we're missing.
+
+**Not yet resolved**: which exact source benchmarks appear across the full ~1,500 selected rows (only a 5-row sample confirmed so far), and whether they're all easily downloadable. Once that's known, the real choice is (a) download every distinct source benchmark and assemble `base_image_path` to satisfy all of them, or (b) something else (e.g. contacting the paper's authors). Do not bulk-download PubMedVision in the meantime — it won't be used for this branch.
 
 ## 4. Submit the training job
 
