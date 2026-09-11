@@ -13,7 +13,6 @@
 # - walltime: no training-time figures are published anywhere for this paper.
 #   8h is a generous guess — tighten once you've seen one epoch's pace.
 # - WANDB_ENTITY below, or switch --report_to to "none".
-# - REPO_DIR / SCRATCH_DIR if your actual paths differ.
 
 set -euo pipefail
 
@@ -21,10 +20,13 @@ module load miniforge3
 # shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"
 
-REPO_DIR="/home/project/csyuchen/MedVLM-R1"  # TODO: confirm this matches your actual persistent project path
-SCRATCH_DIR="/scratch/${USER}"               # TODO: confirm this matches your actual NSCC scratch path
+# PBS_O_WORKDIR is set automatically to wherever `qsub` was run from — submit
+# this from the repo root and it resolves correctly; the fallback is just for
+# testing this script outside a PBS job.
+REPO_DIR="${PBS_O_WORKDIR:-${HOME}/reproduce/MedVLM-R1}"
+SCRATCH_ROOT="${HOME}/scratch"  # shared root across all your NSCC projects, not just this one
 
-conda activate "${SCRATCH_DIR}/envs/medvlm-r1"
+conda activate "${SCRATCH_ROOT}/envs/medvlm-r1"
 cd "${REPO_DIR}/src/open-r1-multimodal"
 
 export DATASET="Huatuo"
@@ -32,7 +34,7 @@ export DATASET_SELECTION="COMBINED"  # MR | CT | XRAY | COMBINED
 export GPU_NUM=4                     # keep in sync with -l ngpus above
 export DEBUG_MODE="false"
 export LOG_PATH="${REPO_DIR}/logs/${DATASET}_log_${GPU_NUM}GPU.txt"
-export HF_HOME="${SCRATCH_DIR}/hf_cache"
+export HF_HOME="${SCRATCH_ROOT}/hf_cache"  # shared cache — HF's own caching model is designed for cross-project reuse
 export WANDB_ENTITY="<your-wandb-entity>"
 export WANDB_PROJECT="medvlm-r1-repro"
 export WANDB_RUN_GROUP="${DATASET}"
@@ -56,9 +58,9 @@ torchrun --nproc_per_node="${GPU_NUM}" \
     --master_addr="${MASTER_ADDR}" \
     --master_port="${MASTER_PORT}" \
     src/open_r1/grpo.py \
-    --output_dir "${SCRATCH_DIR}/checkpoints/medvlm-r1/${WANDB_RUN_NAME}" \
+    --output_dir "${SCRATCH_ROOT}/checkpoints/medvlm-r1/${WANDB_RUN_NAME}" \
     --model_name_or_path Qwen/Qwen2-VL-2B-Instruct \
-    --dataset_name "${SCRATCH_DIR}/data/huatuo_images" \
+    --dataset_name "${SCRATCH_ROOT}/datasets/medvlm-r1-huatuo-images" \
     --dataset_selection "${DATASET_SELECTION}" \
     --deepspeed local_scripts/zero3.json \
     --max_prompt_length 512 \

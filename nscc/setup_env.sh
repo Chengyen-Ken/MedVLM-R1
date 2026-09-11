@@ -8,8 +8,8 @@ set -euo pipefail
 
 module load miniforge3
 
-SCRATCH_DIR="/scratch/${USER}"  # TODO: confirm this matches your actual NSCC scratch path
-ENV_DIR="${SCRATCH_DIR}/envs/medvlm-r1"
+SCRATCH_ROOT="${HOME}/scratch"  # shared root across all your NSCC projects, not just this one
+ENV_DIR="${SCRATCH_ROOT}/envs/medvlm-r1"
 
 conda create -y -p "${ENV_DIR}" python=3.11
 # shellcheck disable=SC1091

@@ -15,9 +15,22 @@ Reproducing [MedVLM-R1](https://github.com/JZPeterPan/MedVLM-R1) (Pan et al., MI
 
 ## Storage layout
 
-Reproduction phase (current): conda env, dataset, and checkpoints all live under `/scratch`, accepting NSCC's 30-day inactivity purge as a deliberate simplicity-over-durability tradeoff — everything there is regenerable (env via `setup.sh`, dataset via the HF CLI download, checkpoints via re-running training). Code lives in the persistent project directory (`/home/project/csyuchen/`), not scratch.
+`$HOME` is `/home/users/ntu/csyuchen`. `$HOME/scratch` is the scratch root — deliberately **shared across all NSCC projects**, not namespaced to this one, so future projects reuse the same datasets/envs instead of re-downloading:
 
-Once the project moves from reproduction into original research, switch to keeping checkpoints and results in the persistent project directory instead of scratch.
+```
+$HOME/scratch/
+├── envs/medvlm-r1/                       this project's conda env
+├── datasets/{omnimedvqa,...}/            raw datasets, reusable across projects
+├── hf_cache/                             shared HF_HOME
+└── checkpoints/medvlm-r1/<run-name>/     training output, namespaced per project
+
+$HOME/reproduce/MedVLM-R1/                this repo (persistent code, not scratch)
+$HOME/project/<future-name>/              where original-research projects go later
+```
+
+Reproduction phase (current): conda env, dataset, and checkpoints all accept NSCC's 30-day scratch inactivity-purge as a deliberate simplicity-over-durability tradeoff — everything there is regenerable (env via `nscc/setup_env.sh`, dataset via the HF CLI download, checkpoints via re-running training). Code lives in `$HOME/reproduce/MedVLM-R1`, not scratch. `nscc/setup_env.sh` and `nscc/train.pbs` reference these paths via `$HOME`, already wired up.
+
+Once the project moves from reproduction into original research (`$HOME/project/<name>`), switch to keeping checkpoints and results outside scratch instead.
 
 ## Agent skills
 
