@@ -11,7 +11,11 @@ module load miniforge3
 SCRATCH_ROOT="${HOME}/scratch"  # shared root across all your NSCC projects, not just this one
 ENV_DIR="${SCRATCH_ROOT}/envs/medvlm-r1"
 
-conda create -y -p "${ENV_DIR}" python=3.11
+if [ ! -d "${ENV_DIR}" ]; then
+  conda create -y -p "${ENV_DIR}" python=3.11
+else
+  echo "Env already exists at ${ENV_DIR}, skipping creation (safe to re-run after a partial failure)."
+fi
 # shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "${ENV_DIR}"
