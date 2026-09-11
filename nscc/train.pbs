@@ -1,0 +1,77 @@
+#!/bin/bash
+#PBS -N medvlm-r1-train
+#PBS -P csyuchen
+#PBS -q ai
+#PBS -l select=1:ncpus=20:ngpus=4
+#PBS -l walltime=08:00:00
+#PBS -o logs/medvlm-r1-train.out
+#PBS -e logs/medvlm-r1-train.err
+
+# TODO before first submit:
+# - ngpus/ncpus above: sized for 4 GPUs (5 cpus/gpu, NSCC's documented ratio).
+#   Drop both if you don't have/want 4 GPUs for this run.
+# - walltime: no training-time figures are published anywhere for this paper.
+#   8h is a generous guess — tighten once you've seen one epoch's pace.
+# - WANDB_ENTITY below, or switch --report_to to "none".
+# - REPO_DIR / SCRATCH_DIR if your actual paths differ.
+
+set -euo pipefail
+
+module load miniforge3
+# shellcheck disable=SC1091
+source "$(conda info --base)/etc/profile.d/conda.sh"
+
+REPO_DIR="/home/project/csyuchen/MedVLM-R1"  # TODO: confirm this matches your actual persistent project path
+SCRATCH_DIR="/scratch/${USER}"               # TODO: confirm this matches your actual NSCC scratch path
+
+conda activate "${SCRATCH_DIR}/envs/medvlm-r1"
+cd "${REPO_DIR}/src/open-r1-multimodal"
+
+export DATASET="Huatuo"
+export DATASET_SELECTION="COMBINED"  # MR | CT | XRAY | COMBINED
+export GPU_NUM=4                     # keep in sync with -l ngpus above
+export DEBUG_MODE="false"
+export LOG_PATH="${REPO_DIR}/logs/${DATASET}_log_${GPU_NUM}GPU.txt"
+export HF_HOME="${SCRATCH_DIR}/hf_cache"
+export WANDB_ENTITY="<your-wandb-entity>"
+export WANDB_PROJECT="medvlm-r1-repro"
+export WANDB_RUN_GROUP="${DATASET}"
+export WANDB_JOB_TYPE="training"
+export WANDB_RUN_NAME="repro-$(date +%Y-%m-%d-%H-%M-%S)"
+
+# Single-node torchrun rendezvous — this job owns the whole node, so its own
+# hostname is a valid master address.
+MASTER_ADDR=$(hostname)
+MASTER_PORT=29500
+
+mkdir -p "${REPO_DIR}/logs"
+
+# NOTE: --dataset_name below is the LOCAL image root grpo.py joins with each
+# sample's example["image"][0] — NOT a Hugging Face dataset id. Path pending
+# verification, see docs/nscc-setup.md step 3 before running this.
+torchrun --nproc_per_node="${GPU_NUM}" \
+    --nnodes=1 \
+    --node_rank=0 \
+    --master_addr="${MASTER_ADDR}" \
+    --master_port="${MASTER_PORT}" \
+    src/open_r1/grpo.py \
+    --output_dir "${SCRATCH_DIR}/checkpoints/medvlm-r1/${WANDB_RUN_NAME}" \
+    --model_name_or_path Qwen/Qwen2-VL-2B-Instruct \
+    --dataset_name "${SCRATCH_DIR}/data/Huatuo/" \
+    --dataset_selection "${DATASET_SELECTION}" \
+    --deepspeed local_scripts/zero3.json \
+    --max_prompt_length 512 \
+    --max_completion_length 512 \
+    --per_device_train_batch_size 1 \
+    --gradient_accumulation_steps 2 \
+    --logging_steps 1 \
+    --bf16 true \
+    --report_to wandb \
+    --gradient_checkpointing false \
+    --attn_implementation flash_attention_2 \
+    --max_pixels 401408 \
+    --num_train_epochs 2 \
+    --run_name "${WANDB_RUN_NAME}" \
+    --save_steps 50 \
+    --save_only_model true \
+    --num_generations 4

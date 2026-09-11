@@ -10,7 +10,8 @@ Reproducing [MedVLM-R1](https://github.com/JZPeterPan/MedVLM-R1) (Pan et al., MI
 
 - Cluster: NSCC Singapore, ASPIRE2A (4x A100-40GB per node, PBS Pro queue `"ai"`)
 - Project ID: `csyuchen` (use `-P csyuchen` for `qsub`)
-- No ready-made PBS job script exists yet — `train_script.sh` assumes an already-live `torchrun` rendezvous (`MASTER_ADDR`/`MASTER_PORT` supplied externally), and the vendored `slurm/` directory is generic upstream boilerplate, not written for this paper or for PBS Pro.
+- Setup runbook and PBS job script: `docs/nscc-setup.md`, `nscc/setup_env.sh`, `nscc/train.pbs`. `train_script.sh` (upstream) assumes an already-live `torchrun` rendezvous (`MASTER_ADDR`/`MASTER_PORT` supplied externally) and isn't PBS-Pro-aware, so `nscc/train.pbs` reimplements its invocation with real values rather than wrapping it — reconcile manually if `upstream` changes `train_script.sh`.
+- Open question: the training data path. `grpo.py`'s `Huatuo` branch loads metadata from `FreedomIntelligence/Medical_Multimodal_Evaluation_Data`, not the `PubMedVision` dataset the README's download instructions reference — whether PubMedVision's files satisfy the image paths `grpo.py` expects is unverified. See `docs/nscc-setup.md` step 3 before downloading anything.
 
 ## Storage layout
 
