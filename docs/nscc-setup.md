@@ -45,9 +45,27 @@ The repo's own README says to download `FreedomIntelligence/PubMedVision` (~59.5
 
 So the real images need to come from each row's original source benchmark, not PubMedVision. No documentation anywhere (HF dataset cards, the HuatuoGPT-Vision repo, MedVLM-R1's README/issues) reconciles this — looks like an undocumented gap in the upstream repo's reproducibility instructions, not something we're missing.
 
-**Narrowed down**: sampled 600 of the 17,303 test rows (spread across the full offset range) — every MR/CT/X-Ray row had `dataset == "OmniMedVQA"`, zero exceptions. So the real image source is a single dataset, `foreverbeliever/OmniMedVQA` on Hugging Face — ungated, 10.7GB, 118,010 images aggregated from 73 source benchmarks under `Images/<source-dataset-name>/...`. Not the scavenger hunt across many benchmarks it first looked like.
+**Confirmed by full census** (all 1,500 rows the `Huatuo`/`COMBINED` training set actually uses, not a sample): every MR/CT/X-Ray row has `dataset == "OmniMedVQA"`, zero exceptions. The real image source is a single dataset, `foreverbeliever/OmniMedVQA` on Hugging Face — ungated, 10.7GB, 118,010 images from 73 source benchmarks under `Images/<source-dataset-name>/...`. Not the scavenger hunt across many benchmarks it first looked like. Do not download `PubMedVision` for this branch — confirmed unused.
 
-One detail still being confirmed: OmniMedVQA reportedly splits into an "open-access" bucket (images provided directly) and a "restricted-access" bucket (paths only, images sourced separately) — which applies here determines the exact download command. Exact steps will replace this paragraph once that's confirmed. Do not bulk-download PubMedVision — confirmed, it isn't used for this branch.
+OmniMedVQA itself splits into an "open-access" bucket (images included) and a "restricted-access" bucket (paths only — files require a separate, sometimes gated, request to the original source benchmark, e.g. one candidate source, AIDA, requires a formal application with a PhD requirement). Which bucket applies to MedVLM-R1's specific 1,500 images is **not knowable without downloading** — the HF repo is one monolithic zip with no browsable file listing. This is a real timeline risk against your 2-month deadline if a large chunk turns out gated; the steps below get you a concrete found/missing count in minutes so you know where you stand early rather than discovering it mid-training-run.
+
+```bash
+# 1. Download + extract (10.7GB, no partial-download option — it's one zip)
+hf download foreverbeliever/OmniMedVQA --repo-type dataset --local-dir "$SCRATCH_DIR/data/omnimedvqa_raw"
+cd "$SCRATCH_DIR/data/omnimedvqa_raw" && unzip OmniMedVQA.zip
+
+# 2. Check what you actually got against the exact 1,500 filenames grpo.py needs,
+#    and materialize a flat images/ dir in the layout grpo.py expects
+python3 nscc/verify_dataset.py "$SCRATCH_DIR/data/omnimedvqa_raw" "$SCRATCH_DIR/data/huatuo_images"
+```
+
+`nscc/verify_dataset.py` (manifest committed alongside it: `nscc/omnimedvqa_manifest.json`, built from a full API census, not a sample) reports found/missing per modality and symlinks every found file into `<output_dir>/images/<name>` — matching how `grpo.py` actually resolves paths (`os.path.join(dataset_name, "images/<name>")`), which doesn't match OmniMedVQA's own nested `Images/<source-dataset>/` layout, hence the symlink step rather than pointing `--dataset_name` straight at the extracted zip.
+
+**If a meaningful chunk comes back missing** (check `missing_images.json`, written next to the symlinked output):
+- You can still train with `DATASET_SELECTION=MR` (or whichever single modality has the fewest gaps) instead of `COMBINED`, at the cost of not matching the paper's full training set.
+- Chasing down individual restricted-access sources is a real decision against your 2-month deadline — worth deciding early whether it's worth pursuing per-source access requests, or whether a partial/modified reproduction (fewer samples, or documenting the gap) is an acceptable fallback for the reproduction phase, with a fuller dataset pursued later if it matters for the novel-research phase.
+
+Once you're satisfied with the found/missing split, `--dataset_name` in `nscc/train.pbs` should point at `$SCRATCH_DIR/data/huatuo_images` (already set there; update `SCRATCH_DIR` at the top of that file if yours differs).
 
 ## 4. Submit the training job
 

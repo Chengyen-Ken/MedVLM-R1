@@ -11,7 +11,7 @@ Reproducing [MedVLM-R1](https://github.com/JZPeterPan/MedVLM-R1) (Pan et al., MI
 - Cluster: NSCC Singapore, ASPIRE2A (4x A100-40GB per node, PBS Pro queue `"ai"`)
 - Project ID: `csyuchen` (use `-P csyuchen` for `qsub`)
 - Setup runbook and PBS job script: `docs/nscc-setup.md`, `nscc/setup_env.sh`, `nscc/train.pbs`. `train_script.sh` (upstream) assumes an already-live `torchrun` rendezvous (`MASTER_ADDR`/`MASTER_PORT` supplied externally) and isn't PBS-Pro-aware, so `nscc/train.pbs` reimplements its invocation with real values rather than wrapping it — reconcile manually if `upstream` changes `train_script.sh`.
-- Open question: the training data path. `grpo.py`'s `Huatuo` branch loads metadata from `FreedomIntelligence/Medical_Multimodal_Evaluation_Data`, not the `PubMedVision` dataset the README's download instructions reference — whether PubMedVision's files satisfy the image paths `grpo.py` expects is unverified. See `docs/nscc-setup.md` step 3 before downloading anything.
+- Training data: the README's `PubMedVision` download instructions are wrong for the `Huatuo` branch `grpo.py` actually uses — confirmed by full census, the real image source is `foreverbeliever/OmniMedVQA` (single 10.7GB zip, no partial download). `nscc/omnimedvqa_manifest.json` + `nscc/verify_dataset.py` turn "will this work" into a found/missing count in minutes — still open whether the specific 1,500 needed images are in OmniMedVQA's open-access or gated bucket, unknowable without downloading. See `docs/nscc-setup.md` step 3.
 
 ## Storage layout
 

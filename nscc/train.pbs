@@ -47,8 +47,9 @@ MASTER_PORT=29500
 mkdir -p "${REPO_DIR}/logs"
 
 # NOTE: --dataset_name below is the LOCAL image root grpo.py joins with each
-# sample's example["image"][0] — NOT a Hugging Face dataset id. Path pending
-# verification, see docs/nscc-setup.md step 3 before running this.
+# sample's example["image"][0] (NOT a Hugging Face dataset id) — run
+# nscc/verify_dataset.py first (see docs/nscc-setup.md step 3) to populate
+# this path and confirm how many of the needed images it actually contains.
 torchrun --nproc_per_node="${GPU_NUM}" \
     --nnodes=1 \
     --node_rank=0 \
@@ -57,7 +58,7 @@ torchrun --nproc_per_node="${GPU_NUM}" \
     src/open_r1/grpo.py \
     --output_dir "${SCRATCH_DIR}/checkpoints/medvlm-r1/${WANDB_RUN_NAME}" \
     --model_name_or_path Qwen/Qwen2-VL-2B-Instruct \
-    --dataset_name "${SCRATCH_DIR}/data/Huatuo/" \
+    --dataset_name "${SCRATCH_DIR}/data/huatuo_images" \
     --dataset_selection "${DATASET_SELECTION}" \
     --deepspeed local_scripts/zero3.json \
     --max_prompt_length 512 \
