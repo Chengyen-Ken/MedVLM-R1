@@ -45,7 +45,9 @@ The repo's own README says to download `FreedomIntelligence/PubMedVision` (~59.5
 
 So the real images need to come from each row's original source benchmark, not PubMedVision. No documentation anywhere (HF dataset cards, the HuatuoGPT-Vision repo, MedVLM-R1's README/issues) reconciles this — looks like an undocumented gap in the upstream repo's reproducibility instructions, not something we're missing.
 
-**Not yet resolved**: which exact source benchmarks appear across the full ~1,500 selected rows (only a 5-row sample confirmed so far), and whether they're all easily downloadable. Once that's known, the real choice is (a) download every distinct source benchmark and assemble `base_image_path` to satisfy all of them, or (b) something else (e.g. contacting the paper's authors). Do not bulk-download PubMedVision in the meantime — it won't be used for this branch.
+**Narrowed down**: sampled 600 of the 17,303 test rows (spread across the full offset range) — every MR/CT/X-Ray row had `dataset == "OmniMedVQA"`, zero exceptions. So the real image source is a single dataset, `foreverbeliever/OmniMedVQA` on Hugging Face — ungated, 10.7GB, 118,010 images aggregated from 73 source benchmarks under `Images/<source-dataset-name>/...`. Not the scavenger hunt across many benchmarks it first looked like.
+
+One detail still being confirmed: OmniMedVQA reportedly splits into an "open-access" bucket (images provided directly) and a "restricted-access" bucket (paths only, images sourced separately) — which applies here determines the exact download command. Exact steps will replace this paragraph once that's confirmed. Do not bulk-download PubMedVision — confirmed, it isn't used for this branch.
 
 ## 4. Submit the training job
 
